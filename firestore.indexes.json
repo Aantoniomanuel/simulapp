@@ -1,0 +1,30 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "ranking",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grupo", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "correos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grupo", "order": "ASCENDING" },
+        { "fieldPath": "ts",    "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "casos_respuestas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grupo",   "order": "ASCENDING" },
+        { "fieldPath": "casoId",  "order": "ASCENDING" },
+        { "fieldPath": "ts",      "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,17 +1,17 @@
 ﻿/* ============================================================
-   FIREBASE CONFIG
-   (Reemplazar con las credenciales del proyecto Firebase real)
+   FIREBASE CONFIG — simulapp-ies-cantillana
    ============================================================ */
 const FIREBASE_CONFIG = {
-  apiKey: "REEMPLAZAR_CON_API_KEY",
-  authDomain: "REEMPLAZAR.firebaseapp.com",
-  projectId: "REEMPLAZAR_PROJECT_ID",
-  storageBucket: "REEMPLAZAR.appspot.com",
-  messagingSenderId: "REEMPLAZAR",
-  appId: "REEMPLAZAR"
+  apiKey:            "AIzaSyBbiTsJxqhRxloDvOXD-J6ohHARm0WZe2w",
+  authDomain:        "simulapp-ies-cantillana.firebaseapp.com",
+  projectId:         "simulapp-ies-cantillana",
+  storageBucket:     "simulapp-ies-cantillana.firebasestorage.app",
+  messagingSenderId: "736364716243",
+  appId:             "1:736364716243:web:4b5186a6ed94f36713b426"
 };
 
-// Modo demo: true = sin Firebase real, datos de ejemplo
+// Modo demo: true = datos de ejemplo sin Firebase | false = Firebase real
+// Cambia a false cuando hayas creado los usuarios en Firebase Auth
 const MODO_DEMO = true;
 
 /* ============================================================

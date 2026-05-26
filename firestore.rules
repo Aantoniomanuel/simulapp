@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuarios: solo el propio usuario puede leer/escribir su perfil
+    match /usuarios/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // El profesor puede leer perfiles de sus alumnos
+      allow read: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'profesor';
+    }
+
+    // Ranking: cualquier usuario autenticado puede leer; solo escribir el propio grupo
+    match /ranking/{grupoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.grupo == grupoId;
+    }
+
+    // Casos respondidos: el propio alumno escribe, el profesor lee
+    match /casos_respuestas/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    // Notificaciones: solo el destinatario
+    match /notificaciones/{userId}/{notifId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Correos del generador IA: docentes escriben, alumnos del grupo leen
+    match /correos/{correoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['profesor', 'admin'];
+    }
+
+    // Config del simulador: solo admin/profesor escribe, todos leen
+    match /config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['profesor', 'admin'];
+    }
+  }
+}
