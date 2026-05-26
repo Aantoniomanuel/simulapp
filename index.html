@@ -1,0 +1,629 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimulApp · IES Cantillana</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<!-- Estilos -->
+<link rel="stylesheet" href="css/simulapp.css">
+</head>
+<body>
+
+<!-- ====================================================
+     PANTALLA DE CARGA
+     ==================================================== -->
+<div id="pantalla-carga">
+  <div class="logo-carga">
+    <div class="icono-logo">🏢</div>
+    <h1>Simul<span>App</span></h1>
+    <p>IES Cantillana · Administración y Finanzas</p>
+  </div>
+  <div class="spinner-carga"></div>
+</div>
+
+<!-- ====================================================
+     PANTALLA LOGIN
+     ==================================================== -->
+<div id="pantalla-login">
+  <div class="login-panel-izq">
+    <div class="login-logo">
+      <div class="icono">🏢</div>
+      <div class="login-logo-texto">
+        <h1>Simul<span>App</span></h1>
+        <p>IES Cantillana</p>
+      </div>
+    </div>
+
+    <div class="login-tagline">
+      <h2>Tu empresa.<br><em>Tu decisión.</em><br>Tu aprendizaje.</h2>
+      <p>Plataforma de simulación empresarial para el Grado Superior en Administración y Finanzas. Crea, gestiona y compite con tu empresa a lo largo del curso.</p>
+    </div>
+
+    <div class="login-chips">
+      <span class="chip">📊 Simulación 0656</span>
+      <span class="chip">📁 Proyecto 3160</span>
+      <span class="chip">💻 Contasol · Factusol · Nominasol</span>
+      <span class="chip">🔄 Mercado intergrupal</span>
+    </div>
+  </div>
+
+  <div class="login-panel-der">
+    <div class="login-form-wrap">
+      <h3>Acceder</h3>
+      <p>Inicia sesión con tu cuenta del IES Cantillana</p>
+
+      <div class="rol-tabs">
+        <button class="rol-tab activo" data-rol="alumno" onclick="seleccionarRol('alumno',this)">
+          <span class="tab-icono">🎓</span>
+          Alumno/a
+        </button>
+        <button class="rol-tab" data-rol="profesor" onclick="seleccionarRol('profesor',this)">
+          <span class="tab-icono">👩‍🏫</span>
+          Docente
+        </button>
+        <button class="rol-tab" data-rol="admin" onclick="seleccionarRol('admin',this)">
+          <span class="tab-icono">⚙️</span>
+          Admin
+        </button>
+      </div>
+
+      <div class="error-msg" id="login-error">
+        Credenciales incorrectas. Verifica tu email y contraseña.
+      </div>
+
+      <div class="campo">
+        <label for="login-email">Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="usuario@iescantillana.es" autocomplete="email">
+      </div>
+      <div class="campo">
+        <label for="login-pass">Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-primario" id="btn-login" onclick="iniciarSesion()">
+        <span>Entrar</span> →
+      </button>
+
+      <div class="login-footer">
+        ¿Problemas para acceder? Contacta con tu docente<br>
+        <strong>SimulApp v1.0 · Módulo 0656 · IES Cantillana 2025-26</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     APP PRINCIPAL
+     ==================================================== -->
+<div id="app-principal">
+
+  <!-- TOPBAR -->
+  <nav class="topbar">
+    <a href="#" class="topbar-logo" onclick="return false">
+      <div class="icono-mini">🏢</div>
+      <div class="topbar-logo-texto">
+        <strong>Simul<span>App</span></strong>
+        <small>IES Cantillana</small>
+      </div>
+    </a>
+
+    <span class="topbar-modulo" id="topbar-modulo-label">Dashboard</span>
+
+    <div class="topbar-sep"></div>
+
+    <div class="topbar-empresa" id="topbar-empresa" onclick="irA('empresa')">
+      <div class="emp-dot"></div>
+      <div>
+        <div class="emp-nombre" id="topbar-emp-nombre">—</div>
+        <div class="emp-dept" id="topbar-emp-dept">—</div>
+      </div>
+    </div>
+
+    <div class="topbar-notif" onclick="toggleNotif()">
+      🔔
+      <div class="notif-badge" id="notif-count" style="display:none">0</div>
+    </div>
+
+    <div class="topbar-avatar" id="topbar-avatar" onclick="toggleUserMenu()">?</div>
+  </nav>
+
+  <div class="app-body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <!-- Progreso del curso -->
+      <div class="sidebar-seccion">
+        <div class="sidebar-progreso">
+          <h5>📅 Progreso del curso</h5>
+          <div class="progreso-bar">
+            <div class="progreso-fill" id="progreso-fill" style="width:32%"></div>
+          </div>
+          <div class="progreso-texto">
+            <span id="progreso-semana">Semana 8</span>
+            <span>32%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empresa info -->
+      <div class="sidebar-empresa-info" id="sidebar-emp-info">
+        <div class="emp-info-nombre" id="sidebar-emp-nombre">—</div>
+        <div class="emp-info-sector" id="sidebar-emp-sector">—</div>
+        <div class="emp-info-stats">
+          <div class="emp-stat">
+            <div class="valor" id="stat-grupo">—</div>
+            <div class="etiq">Grupo</div>
+          </div>
+          <div class="emp-stat">
+            <div class="valor" id="stat-dept">—</div>
+            <div class="etiq">Dpto.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Dashboard -->
+      <div class="sidebar-seccion">
+        <button class="nav-item activo" onclick="irA('dashboard',this)">
+          <span class="nav-icono">🏠</span> Dashboard
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Creación de empresa -->
+      <div class="sidebar-seccion">
+        <div class="sidebar-seccion-titulo">Creación de empresa</div>
+        <button class="nav-item" onclick="irA('empresa',this)">
+          <span class="nav-icono">🏢</span> Mi empresa
+        </button>
+        <button class="nav-item" onclick="irA('emprendimiento',this)">
+          <span class="nav-icono">💡</span> Emprendimiento y dirección
+        </button>
+        <button class="nav-item" onclick="irA('plan-empresa',this)">
+          <span class="nav-icono">📋</span> Plan de empresa
+          <span class="nav-badge" id="badge-plan">0%</span>
+        </button>
+        <button class="nav-item" onclick="irA('defensa',this)">
+          <span class="nav-icono">🎤</span> Defensa
+        </button>
+        <button class="nav-item" onclick="irA('dossier',this)">
+          <span class="nav-icono">📄</span> Dossier 3160
+        </button>
+        <button class="nav-item" onclick="irA('tareas',this)">
+          <span class="nav-icono">✅</span> Tareas
+          <span class="nav-badge" id="badge-tareas-grupo">0</span>
+        </button>
+      </div>
+      <div class="sidebar-seccion">
+        <div class="sidebar-seccion-titulo">Aprende</div>
+        <button class="nav-item" onclick="irA('conceptos',this)">
+          <span class="nav-icono">📚</span> Conceptos clave
+        </button>
+        <button class="nav-item" onclick="irA('casos',this)">
+          <span class="nav-icono">🧩</span> Casos y situaciones
+          <span class="nav-badge" id="badge-casos" style="display:none">0</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Gestión de empresa -->
+      <div class="sidebar-seccion">
+        <div class="sidebar-seccion-titulo">Gestión de empresa</div>
+        <button class="nav-item" onclick="irA('mercado',this)">
+          <span class="nav-icono">🔄</span> Mercado
+        </button>
+        <button class="nav-item" onclick="irA('mensajeria',this)">
+          <span class="nav-icono">📧</span> Correo
+          <span class="nav-badge" id="badge-correos">0</span>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Programas de gestión -->
+      <div class="sidebar-seccion">
+        <div class="sidebar-seccion-titulo">Programas de gestión</div>
+        <button class="nav-item" onclick="irA('programas',this)" id="nav-programas">
+          <span class="nav-icono">🖥️</span> Factusol · Contasol · Nominasol
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Evaluación -->
+      <div class="sidebar-seccion">
+        <div class="sidebar-seccion-titulo">Evaluación</div>
+        <button class="nav-item" onclick="irA('autoevaluacion',this)">
+          <span class="nav-icono">✏️</span> Autoevaluación
+        </button>
+        <button class="nav-item" onclick="irA('coevaluacion',this)">
+          <span class="nav-icono">🤝</span> Coevaluación
+        </button>
+        <button class="nav-item" onclick="irA('notas',this)">
+          <span class="nav-icono">🏅</span> Mis notas
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="contenido" id="contenido-principal">
+      <!-- El contenido se inyecta dinámicamente por JS -->
+    </main>
+
+  </div><!-- /app-body -->
+
+</div><!-- /app-principal -->
+
+<!-- PANEL DE AYUDA CONTEXTUAL -->
+<div id="ayuda-panel">
+  <div class="ayuda-header">
+    <div class="ayuda-header-icono" id="ayuda-icono">💡</div>
+    <div class="ayuda-header-texto">
+      <div class="ayuda-titulo" id="ayuda-titulo">Ayuda contextual</div>
+      <div class="ayuda-modulo" id="ayuda-modulo">SimulApp · Conceptos clave</div>
+    </div>
+    <button class="ayuda-cerrar" onclick="cerrarAyuda()" title="Cerrar ayuda">✕</button>
+  </div>
+  <div class="ayuda-tabs" id="ayuda-tabs"></div>
+  <div class="ayuda-body" id="ayuda-body">
+    <div style="padding:20px;text-align:center;color:var(--gris-400)">
+      <div style="font-size:2rem;margin-bottom:8px">💡</div>
+      <div style="font-size:.85rem">Selecciona un módulo y pulsa <strong>❓ Ayuda</strong> para ver los conceptos clave de ese apartado.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Paneles flotantes -->
+<div class="notif-panel" id="notif-panel">
+  <!-- Renderizado dinámicamente por renderNotifPanel() -->
+</div>
+
+<div class="user-menu" id="user-menu">
+  <div class="user-menu-header">
+    <div class="user-menu-nombre" id="um-nombre">—</div>
+    <div class="user-menu-rol" id="um-rol">—</div>
+  </div>
+  <button class="user-menu-item" onclick="window.PERFIL_STATE={tab:APP.rolActivo==='alumno'?'progreso':'alumnos'};irA('perfil')">👤 Mi perfil</button>
+  <button class="user-menu-item" onclick="irA('ajustes')">⚙️ Ajustes</button>
+  <button class="user-menu-item peligro" onclick="cerrarSesion()">↩️ Cerrar sesión</button>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ====================================================
+     VIDEOBOARDING — GUÍA DE BIENVENIDA
+     ==================================================== -->
+<div id="vb-overlay" class="oculto">
+  <div class="vb-modal">
+    <!-- Cabecera -->
+    <div class="vb-header">
+      <div class="vb-header-logo">🏢</div>
+      <div class="vb-header-info">
+        <h2>Bienvenido/a a SimulApp</h2>
+        <p>Guía de inicio · IES Cantillana · Módulo 0656</p>
+      </div>
+      <button class="vb-close-btn" onclick="vbCerrar()" title="Cerrar guía">✕</button>
+    </div>
+
+    <!-- Barra de progreso -->
+    <div class="vb-progress-bar">
+      <div class="vb-progress-fill" id="vb-progress-fill" style="width:0%"></div>
+    </div>
+
+    <!-- Puntos de navegación -->
+    <div class="vb-dots" id="vb-dots"></div>
+
+    <!-- Contenido de los slides -->
+    <div class="vb-body" id="vb-body">
+
+      <!-- SLIDE 0 — Bienvenida -->
+      <div class="vb-slide activo" data-slide="0">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">🏢</div>
+          <h3>Tu empresa empieza aquí</h3>
+          <p>SimulApp es una plataforma de simulación empresarial en la que crearás y gestionarás una empresa real durante todo el curso. Esta guía de 7 pasos te explica todo lo que necesitas saber para empezar.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">🎯</div>
+            <div class="vb-item-text">
+              <h4>¿Qué es SimulApp?</h4>
+              <p>Una simulación completa del ciclo de vida de una empresa: desde la constitución hasta la gestión diaria de operaciones, RRHH, contabilidad y comunicación profesional.</p>
+              <span class="vb-tag">Módulo 0656 · Proyecto 3160</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">📊</div>
+            <div class="vb-item-text">
+              <h4>¿Qué vas a aprender?</h4>
+              <p>Trabajarás los 6 Resultados de Aprendizaje del módulo: emprendimiento, análisis del entorno, constitución empresarial, economía financiera, fiscalidad y gestión operativa.</p>
+              <span class="vb-tag">RA1 · RA2 · RA3 · RA4 · RA5 · RA6</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">🏆</div>
+            <div class="vb-item-text">
+              <h4>Compite con otras empresas</h4>
+              <p>Tu grupo compite con los demás grupos del aula en un mercado intergrupal real. Cuanta más actividad, más puntos. El ranking se actualiza en tiempo real.</p>
+              <span class="vb-tag">Mercado intergrupal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 1 — Dashboard y navegación -->
+      <div class="vb-slide" data-slide="1">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">🧭</div>
+          <h3>Cómo moverte por la app</h3>
+          <p>SimulApp tiene una barra lateral de navegación con todos los módulos del curso. Cada sección corresponde a un bloque de contenido y evaluación.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">📋</div>
+            <div class="vb-item-text">
+              <h4>Dashboard — Tu punto de partida</h4>
+              <p>Cada vez que entres verás el resumen de tu empresa: correos sin leer, tareas de la semana, progreso del plan de empresa y el ranking intergrupal.</p>
+              <span class="vb-tag">Inicio</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">🔔</div>
+            <div class="vb-item-text">
+              <h4>Notificaciones</h4>
+              <p>La campana 🔔 de la barra superior te avisa de nuevos correos, tareas pendientes, eventos del mercado y recordatorios de autoevaluación. Revísala cada vez que entres.</p>
+              <span class="vb-tag">Topbar</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">❓</div>
+            <div class="vb-item-text">
+              <h4>Botón de Ayuda contextual</h4>
+              <p>En cada módulo encontrarás el botón <strong>❓ Ayuda</strong>. Al pulsarlo se abre un panel lateral con los conceptos clave de ese apartado, adaptados al estado de tu empresa.</p>
+              <span class="vb-tag">Ayuda contextual</span>
+            </div>
+          </div>
+        </div>
+        <div class="vb-tip">
+          <span class="vb-tip-icon">💡</span>
+          <span>Si alguna vez te pierdes, pulsa el botón <strong>🎓 Tour</strong> que aparece abajo a la izquierda para volver a ver esta guía.</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 2 — Mi empresa -->
+      <div class="vb-slide" data-slide="2">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">🏢</div>
+          <h3>Paso 1: Crea tu empresa</h3>
+          <p>Lo primero que debes hacer es rellenar la ficha de tu empresa en <strong>Mi empresa</strong>. Sin esto, muchas secciones no estarán disponibles.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">📝</div>
+            <div class="vb-item-text">
+              <h4>Ficha de identidad</h4>
+              <p>Introduce el nombre de la empresa, forma jurídica, domicilio social, objeto social y los socios con sus aportaciones de capital. El mínimo para una S.L. es 3.000 €.</p>
+              <span class="vb-tag">RA3a · RA3b</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">📑</div>
+            <div class="vb-item-text">
+              <h4>Trámites de constitución</h4>
+              <p>La pestaña <em>Trámites</em> simula el proceso legal real: certificado negativo de denominación, escritura notarial, registro mercantil, alta censal... Márcalos a medida que los completes.</p>
+              <span class="vb-tag">RA3e · RA5</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">👥</div>
+            <div class="vb-item-text">
+              <h4>RRHH y nóminas</h4>
+              <p>En <em>RRHH</em> gestionarás los contratos de los trabajadores, calcularás nóminas y registrarás las incidencias laborales del trimestre.</p>
+              <span class="vb-tag">RA6c · RA6d</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3 — Plan de empresa -->
+      <div class="vb-slide" data-slide="3">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">📋</div>
+          <h3>El Plan de empresa</h3>
+          <p>El plan de empresa es el documento más importante del curso. Tiene 8 apartados que irás completando a lo largo del año. Cada apartado está vinculado a un RA específico.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">💡</div>
+            <div class="vb-item-text">
+              <h4>Apartados 1-3: Idea y equipo</h4>
+              <p>Resumen ejecutivo, equipo promotor y descripción del negocio. Aquí defines qué hace tu empresa, a quién va dirigida y qué os diferencia de la competencia.</p>
+              <span class="vb-tag">RA1 · RA2</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">📊</div>
+            <div class="vb-item-text">
+              <h4>Apartados 4-6: Análisis y organización</h4>
+              <p>DAFO, análisis del sector, plan jurídico-fiscal y plan de organización y RRHH. La app te muestra alertas si detecta inconsistencias en el análisis.</p>
+              <span class="vb-tag">RA2 · RA3 · RA5</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">💰</div>
+            <div class="vb-item-text">
+              <h4>Apartados 7-8: Finanzas y marketing</h4>
+              <p>Plan económico-financiero (inversión, financiación, cuenta de resultados, umbral de rentabilidad, TIR) y plan de marketing (las 4P). La app calcula los ratios automáticamente.</p>
+              <span class="vb-tag">RA4 · RA6b</span>
+            </div>
+          </div>
+        </div>
+        <div class="vb-tip">
+          <span class="vb-tip-icon">💡</span>
+          <span>La barra de progreso del plan se actualiza en tiempo real. El objetivo es llegar al <strong>100%</strong> antes de la defensa del Proyecto 3160.</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 4 — Mensajería y mercado -->
+      <div class="vb-slide" data-slide="4">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">📧</div>
+          <h3>Correo de empresa y mercado</h3>
+          <p>Tu buzón de empresa recibirá situaciones reales: facturas de proveedores, reclamaciones de clientes, notificaciones fiscales... Cada correo es un ejercicio de gestión.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">📧</div>
+            <div class="vb-item-text">
+              <h4>Buzón de correo</h4>
+              <p>Lee cada correo, analiza la situación y responde de forma profesional. La calidad de la respuesta (tono, plazo, argumentación) forma parte de la evaluación del RA6.</p>
+              <span class="vb-tag">RA6a · Comunicación profesional</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">🔄</div>
+            <div class="vb-item-text">
+              <h4>Mercado intergrupal</h4>
+              <p>Puedes comprar y vender con las otras empresas de la clase. Cada transacción genera automáticamente la ficha de factura para Factusol y el asiento para Contasol.</p>
+              <span class="vb-tag">RA6b · Transacciones</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">🖥️</div>
+            <div class="vb-item-text">
+              <h4>Programas de gestión</h4>
+              <p>En <em>Programas de gestión</em> encontrarás fichas de datos generadas automáticamente para practicar con Nominasol, Contasol y Factusol. Registra tus evidencias en cada tarea.</p>
+              <span class="vb-tag">AN5542 · Optativa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5 — Evaluación -->
+      <div class="vb-slide" data-slide="5">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">📝</div>
+          <h3>Cómo se evalúa</h3>
+          <p>La evaluación de SimulApp combina autoevaluación, coevaluación, tareas evaluadas por el docente y el progreso del plan de empresa. Todo queda registrado en el Dossier 3160.</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">🪞</div>
+            <div class="vb-item-text">
+              <h4>Autoevaluación</h4>
+              <p>Al final de cada trimestre evaluarás tus propios criterios de evaluación (CE) en una escala del 1 al 4. Sé honesto/a: el objetivo es saber qué dominas y qué necesitas reforzar.</p>
+              <span class="vb-tag">Metacognición · Todos los RA</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">✅</div>
+            <div class="vb-item-text">
+              <h4>Tareas semanales</h4>
+              <p>Cada semana tu docente publicará tareas vinculadas a tu departamento. Entrégalas en el apartado <strong>Tareas</strong>. Las evaluadas restan puntos al grupo si no se completan.</p>
+              <span class="vb-tag">RA6g · Tareas semanales</span>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">📄</div>
+            <div class="vb-item-text">
+              <h4>Dossier 3160</h4>
+              <p>El Dossier recoge todas las evidencias del curso: plan de empresa, actas, transacciones, nóminas... Lo necesitarás para la defensa pública del Proyecto intermodular.</p>
+              <span class="vb-tag">Proyecto 3160 · RA1-RA6</span>
+            </div>
+          </div>
+        </div>
+        <div class="vb-tip">
+          <span class="vb-tip-icon">💡</span>
+          <span>En <strong>Conceptos clave</strong> y <strong>Casos y situaciones</strong> tienes fichas de estudio y ejercicios guiados para repasar cada RA antes de la evaluación.</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 6 — ¡Listo! -->
+      <div class="vb-slide" data-slide="6">
+        <div class="vb-slide-hero">
+          <div class="hero-icon">🚀</div>
+          <h3>¡Todo listo para empezar!</h3>
+          <p>Ya tienes lo esencial para arrancar. El primer paso es ir a <strong>Mi empresa</strong> y rellenar la ficha de tu grupo. ¡Mucho ánimo!</p>
+        </div>
+        <div class="vb-items">
+          <div class="vb-item">
+            <div class="vb-item-icon">1️⃣</div>
+            <div class="vb-item-text">
+              <h4>Primero: rellena tu ficha</h4>
+              <p>Ve a <strong>Mi empresa → Ficha e identidad</strong> y completa todos los datos del grupo. Sin esto no podréis avanzar en el plan de empresa ni en los trámites.</p>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">2️⃣</div>
+            <div class="vb-item-text">
+              <h4>Luego: empieza el Plan de empresa</h4>
+              <p>En <strong>Emprendimiento</strong> y <strong>Plan de empresa</strong> encontrarás el Canvas y el Apartado 1. Id completando los apartados en orden.</p>
+            </div>
+          </div>
+          <div class="vb-item">
+            <div class="vb-item-icon">3️⃣</div>
+            <div class="vb-item-text">
+              <h4>Y no olvides revisar el buzón</h4>
+              <p>Cada día pueden llegar correos al buzón de empresa con situaciones que requieren respuesta. Activa las notificaciones y revísalo regularmente.</p>
+            </div>
+          </div>
+        </div>
+        <div class="vb-tip">
+          <span class="vb-tip-icon">🎓</span>
+          <span>Puedes volver a ver esta guía en cualquier momento pulsando el botón <strong>🎓 Tour</strong> que aparece en la esquina inferior izquierda de la app.</span>
+        </div>
+      </div>
+
+    </div><!-- /vb-body -->
+
+    <!-- Footer de navegación -->
+    <div class="vb-footer">
+      <button class="vb-btn-prev" id="vb-btn-prev" onclick="vbAnterior()" style="display:none">← Anterior</button>
+      <button class="vb-skip" onclick="vbCerrar()">Saltar guía</button>
+      <button class="vb-btn-next" id="vb-btn-next" onclick="vbSiguiente()">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Botón flotante para relanzar el tour -->
+<button id="btn-tour-flotante" onclick="vbAbrir()" style="display:none" title="Ver guía de inicio">
+  🎓 Tour
+</button>
+
+<!-- ====================================================
+     JAVASCRIPT
+     ==================================================== -->
+
+<!-- ============================================================
+     JavaScript - modulos en orden de dependencia
+     ============================================================ -->
+<script src="js/config.js"></script>
+<script src="js/casos.js"></script>
+<script src="js/conceptos.js"></script>
+<script src="js/app-core.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/empresa.js"></script>
+<script src="js/mensajeria.js"></script>
+<script src="js/mercado.js"></script>
+<script src="js/emprendimiento.js"></script>
+<script src="js/plan-empresa.js"></script>
+<script src="js/gestion.js"></script>
+<script src="js/programas.js"></script>
+<script src="js/tareas.js"></script>
+<script src="js/evaluacion.js"></script>
+<script src="js/panel-profesor.js"></script>
+<script src="js/ayuda.js"></script>
+<script src="js/perfil.js"></script>
+
+</body>
+</html>
