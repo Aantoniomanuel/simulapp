@@ -444,8 +444,9 @@ function vistaPerfilDocente() {
     </div>
 
     <div style="background:var(--verde-50);border:1px solid var(--verde-200);border-radius:var(--radio-lg);padding:1rem;font-size:.8rem;color:var(--verde-800);line-height:1.6">
-      <strong>💡 Próximo paso:</strong> Para que los datos persistan entre sesiones, activa Supabase en el código fuente cambiando <code>MODO_DEMO = false</code> y configurando las tablas de alumnos y grupos en tu proyecto de Supabase.
+      <strong>💡 Próximo paso:</strong> Para que los datos persistan entre sesiones, activa Firebase en el código fuente cambiando <code>MODO_DEMO = false</code>.
     </div>
+    ${htmlGestionCurso()}
   </div>`;
 
   /* Accesos REAL */
@@ -550,6 +551,40 @@ function vistaPerfilDocente() {
     </div>`;
   };
 
+  /* ── Acciones de gestión de curso (compartido demo/real) ── */
+  const htmlGestionCurso = () => {
+    const cursoActual = EMPRESA_STATE.config.cursoAcademico || '2025-26';
+    return `
+    <!-- Curso académico -->
+    <div style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:var(--radio-lg);padding:1.25rem">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gris-700);margin-bottom:.4rem">📅 Curso académico</div>
+      <p style="font-size:.78rem;color:var(--gris-500);margin:0 0 1rem">Modifica el año del curso para reutilizar la plataforma en cursos posteriores. El cambio se refleja en cabeceras, exportaciones e informes.</p>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:.72rem;font-weight:600;color:var(--gris-600)">Curso actual</label>
+          <input id="input-curso-academico" type="text" value="${cursoActual}" placeholder="2025-26"
+            style="width:120px;padding:7px 10px;border:1px solid var(--gris-200);border-radius:var(--radio-md);font-size:.85rem;font-weight:600">
+        </div>
+        <button class="btn-accion" style="font-size:.82rem;margin-top:16px" onclick="guardarCursoAcademico()">💾 Guardar curso</button>
+      </div>
+    </div>
+
+    <!-- Copia de seguridad -->
+    <div style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:var(--radio-lg);padding:1.25rem">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gris-700);margin-bottom:.4rem">🗂️ Copia de seguridad</div>
+      <p style="font-size:.78rem;color:var(--gris-500);margin:0 0 1rem">Descarga un archivo JSON con todos los datos del curso: empresa, tareas, evaluaciones, correos, transacciones y calificaciones. Guárdalo como respaldo antes de comenzar un curso nuevo.</p>
+      <button class="btn-secundario" style="font-size:.82rem" onclick="generarBackupCurso()">⬇️ Descargar copia de seguridad</button>
+    </div>
+
+    <!-- Reiniciar plataforma -->
+    <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:var(--radio-lg);padding:1.25rem">
+      <div style="font-size:.82rem;font-weight:700;color:#991b1b;margin-bottom:.4rem">⚠️ Poner a cero la plataforma</div>
+      <p style="font-size:.78rem;color:#7f1d1d;margin:0 0 1rem">Elimina todos los datos del curso actual (empresa, tareas, correos, evaluaciones, transacciones) para comenzar un curso nuevo desde cero. <strong>Esta acción no se puede deshacer.</strong> Se conservan el sector, los nombres de grupos y los pesos de evaluación configurados.</p>
+      <button style="background:#dc2626;color:white;border:none;border-radius:var(--radio-md);padding:8px 18px;font-size:.82rem;font-weight:600;cursor:pointer"
+        onclick="confirmarReinicioPlataforma()">🗑️ Poner a cero</button>
+    </div>`;
+  };
+
   const configDemoHTML = () => {
     const cfg = EMPRESA_STATE.config;
     return `
@@ -584,6 +619,7 @@ function vistaPerfilDocente() {
         <button class="btn-accion" style="margin-top:1rem;font-size:.82rem"
           onclick="mostrarToast('✓ Configuración guardada','exito')">💾 Guardar configuración</button>
       </div>
+      ${htmlGestionCurso()}
     </div>`;
   };
 
@@ -791,6 +827,133 @@ function vbCerrar() {
   document.getElementById('vb-overlay').classList.add('oculto');
   // Marcar como visto
   try { localStorage.setItem('simulapp_tour_visto', '1'); } catch(e) {}
+}
+
+/* ============================================================
+   GESTIÓN DE CURSO — guardar año, backup, reiniciar
+   ============================================================ */
+
+function guardarCursoAcademico() {
+  const input = document.getElementById('input-curso-academico');
+  const nuevo = input ? input.value.trim() : '';
+  if (!nuevo) { mostrarToast('Introduce un curso válido (ej: 2026-27)', 'error'); return; }
+  if (!EMPRESA_STATE.config) EMPRESA_STATE.config = {};
+  EMPRESA_STATE.config.cursoAcademico = nuevo;
+  try { localStorage.setItem('simulapp_curso', nuevo); } catch(e) {}
+  mostrarToast('Curso actualizado a ' + nuevo, 'exito');
+  renderVista('perfil');
+}
+
+function generarBackupCurso() {
+  const curso = (EMPRESA_STATE.config && EMPRESA_STATE.config.cursoAcademico) || '2025-26';
+  const backup = {
+    version: '1.0',
+    exportadoEn: new Date().toISOString(),
+    cursoAcademico: curso,
+    EMPRESA_STATE: JSON.parse(JSON.stringify(EMPRESA_STATE)),
+    APP_perfil: APP.perfil,
+    APP_empresa: APP.empresa,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'simulapp_backup_' + curso + '_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  mostrarToast('Copia de seguridad descargada correctamente', 'exito');
+}
+
+function confirmarReinicioPlataforma() {
+  const p1 = confirm('⚠️ ATENCIÓN\n\nEsto borrará TODOS los datos del curso actual:\nempresa, tareas, correos, transacciones y evaluaciones.\n\nSe conservan: sector, nombres de grupos y pesos de evaluación.\n\n¿Continuar?');
+  if (!p1) return;
+  const p2 = confirm('⚠️ SEGUNDA CONFIRMACIÓN\n\nEsta acción no se puede deshacer.\n¿Seguro que quieres poner la plataforma a cero?');
+  if (!p2) return;
+  reiniciarPlataforma();
+}
+
+function reiniciarPlataforma() {
+  // Conservar configuración del docente
+  const cfgGuardada = JSON.parse(JSON.stringify(EMPRESA_STATE.config || {}));
+  const pesosGuardados   = JSON.parse(JSON.stringify(EMPRESA_STATE.evalDocente.pesos   || {}));
+  const pesosCEGuardados = JSON.parse(JSON.stringify(EMPRESA_STATE.evalDocente.pesosCE || {}));
+  const convenioGuardado = JSON.parse(JSON.stringify(EMPRESA_STATE.rrhh.convenio       || {}));
+
+  // Resetear datos de empresa
+  EMPRESA_STATE.datos = {
+    nombre:'', formaJuridica:'', domicilioSocial:'', objetoSocial:'',
+    cifProvisional:'', capitalInicial:0, fechaConstitucion:'', departamento:'',
+    socios:[], organigrama:{ direccion:{}, rrhh:{}, comercial:{}, contabilidad:{}, fiscal:{} }
+  };
+
+  // Resetear gestión
+  EMPRESA_STATE.gestion.semanaActual   = 1;
+  EMPRESA_STATE.gestion.trimestreActual = 1;
+  EMPRESA_STATE.gestion.tareas         = [];
+  EMPRESA_STATE.gestion.asignaciones   = {
+    direccion:{alumno:'',trimestre:1}, rrhh:{alumno:'',trimestre:1},
+    comercial:{alumno:'',trimestre:1}, contabilidad:{alumno:'',trimestre:1}, fiscal:{alumno:'',trimestre:1},
+  };
+
+  // Resetear mensajería, mercado, RRHH empleados
+  EMPRESA_STATE.mensajeria.correos        = [];
+  EMPRESA_STATE.mensajeria.correoAbierto  = null;
+  EMPRESA_STATE.mercado.transacciones     = [];
+  EMPRESA_STATE.mercado.catalogo          = [];
+  EMPRESA_STATE.mercado.eventos           = [];
+  EMPRESA_STATE.rrhh.empleados            = [];
+  EMPRESA_STATE.rrhh.nominasMes           = null;
+  EMPRESA_STATE.rrhh.convenio             = convenioGuardado;
+
+  // Resetear trámites a estado pendiente
+  EMPRESA_STATE.tramites.forEach(t => {
+    t.estado = 'pendiente'; t.fecha = ''; t.notas = ''; t.documentoSubido = null; t.anotacionProfesor = '';
+  });
+
+  // Resetear plan de empresa
+  ['ap1','ap2','ap3','ap4','ap5','ap6','ap7'].forEach(ap => {
+    if (EMPRESA_STATE.planEmpresa[ap]) {
+      if (ap === 'ap7') { EMPRESA_STATE.planEmpresa.ap7.tabActiva = 'inversion'; }
+      else { Object.keys(EMPRESA_STATE.planEmpresa[ap]).forEach(k => {
+        const v = EMPRESA_STATE.planEmpresa[ap][k];
+        EMPRESA_STATE.planEmpresa[ap][k] = Array.isArray(v) ? [] : typeof v === 'object' && v !== null ? {} : '';
+      }); }
+    }
+  });
+  EMPRESA_STATE.planEmpresa.progreso = {};
+
+  // Resetear evaluación docente (conservar pesos)
+  EMPRESA_STATE.evalDocente.alumnos         = [];
+  EMPRESA_STATE.evalDocente.calificaciones  = {};
+  EMPRESA_STATE.evalDocente.pesos           = pesosGuardados;
+  EMPRESA_STATE.evalDocente.pesosCE         = pesosCEGuardados;
+
+  // Resetear evaluación alumno
+  EMPRESA_STATE.evaluacion.auto.guardado    = false;
+  EMPRESA_STATE.evaluacion.auto.periodos.forEach(p => { p.completado=false; p.fecha=null; p.items={}; });
+  EMPRESA_STATE.evaluacion.co.periodos.forEach(p  => { p.completado=false; p.fecha=null; p.items={}; p.evaluado=''; p.reflexion=''; });
+
+  // Resetear casos y notificaciones
+  EMPRESA_STATE.casos.respuestas    = {};
+  EMPRESA_STATE.casos.casosCustom   = [];
+  EMPRESA_STATE.notificaciones.items     = [];
+  EMPRESA_STATE.notificaciones.noLeidas  = 0;
+
+  // Restaurar config
+  EMPRESA_STATE.config            = cfgGuardada;
+  EMPRESA_STATE.modoEdicion       = true;
+  EMPRESA_STATE.fichaGuardada     = false;
+  EMPRESA_STATE.seccionActiva     = 'ficha';
+
+  // Limpiar localStorage de datos del curso (conservar preferencias UI)
+  try {
+    ['simulapp_plan','simulapp_empresa','simulapp_tareas','simulapp_gestion'].forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+
+  mostrarToast('Plataforma puesta a cero. Listo para un nuevo curso.', 'exito');
+  setTimeout(() => irA('dashboard'), 800);
 }
 
 /* Lanzar automáticamente en el primer acceso del alumno */
