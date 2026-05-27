@@ -90,11 +90,80 @@
         <span>Entrar</span> →
       </button>
 
+      <div style="text-align:center;margin-top:1rem">
+        <button onclick="toggleRegistro()" id="btn-toggle-registro"
+          style="background:none;border:none;color:var(--verde-600);cursor:pointer;font-size:.82rem;font-weight:600;text-decoration:underline;padding:0">
+          ¿Primera vez? Regístrate →
+        </button>
+      </div>
+
       <div class="login-footer">
         ¿Problemas para acceder? Contacta con tu docente<br>
         <strong>SimulApp v1.0 · Módulo 0656 · IES Cantillana 2025-26</strong>
       </div>
     </div>
+
+    <!-- ── Panel de auto-registro ── -->
+    <div id="panel-registro" style="display:none;padding:1.5rem;background:#f8fafc;border-top:1px solid var(--gris-200)">
+
+      <!-- Modo demo: aviso -->
+      <div id="registro-modo-demo" style="display:none;text-align:center;padding:1rem;background:#fef3c7;border-radius:var(--radio-md);border:1px solid #fde68a">
+        <div style="font-size:1.2rem;margin-bottom:.4rem">🎭</div>
+        <div style="font-size:.82rem;font-weight:600;color:#92400e;margin-bottom:.4rem">Registro disponible en modo real</div>
+        <div style="font-size:.75rem;color:#78350f">Para que los alumnos se registren solos necesitas activar Firebase.<br>
+          Inicia sesión como docente → Perfil → Configuración → <strong>Activar modo real</strong>.</div>
+      </div>
+
+      <!-- Modo real: formulario -->
+      <div id="registro-form-real" style="display:none">
+        <h4 style="margin:0 0 1rem;font-size:.95rem;color:var(--gris-800)">📝 Crear cuenta de alumno/a</h4>
+        <div class="error-msg" id="registro-error" style="margin-bottom:.75rem">Error de registro</div>
+
+        <div class="campo">
+          <label for="reg-nombre">Nombre completo</label>
+          <input type="text" id="reg-nombre" placeholder="Ana García López" autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="reg-email">Correo corporativo</label>
+          <input type="email" id="reg-email" placeholder="alumna@iescantillana.es" autocomplete="email">
+        </div>
+        <div class="campo">
+          <label for="reg-grupo">Grupo de simulación</label>
+          <select id="reg-grupo">
+            <option value="">— Selecciona tu grupo —</option>
+            <option value="G1">G1</option>
+            <option value="G2">G2</option>
+            <option value="G3">G3</option>
+            <option value="G4">G4</option>
+            <option value="G5">G5</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="reg-pass">Contraseña (mínimo 6 caracteres)</label>
+          <input type="password" id="reg-pass" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="campo">
+          <label for="reg-pass2">Confirmar contraseña</label>
+          <input type="password" id="reg-pass2" placeholder="••••••••" autocomplete="new-password">
+        </div>
+
+        <button class="btn-primario" id="btn-registro" onclick="registrarAlumno()"
+          style="margin-top:.25rem">
+          <span>Crear cuenta</span> →
+        </button>
+        <div style="font-size:.72rem;color:var(--gris-400);margin-top:.75rem;text-align:center">
+          Solo se permiten correos <strong>@iescantillana.es</strong> o <strong>@g.educaand.es</strong>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:1rem">
+        <button onclick="toggleRegistro()"
+          style="background:none;border:none;color:var(--gris-500);cursor:pointer;font-size:.78rem;text-decoration:underline">
+          ← Volver al inicio de sesión
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>
 

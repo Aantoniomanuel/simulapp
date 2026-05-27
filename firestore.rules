@@ -5,9 +5,19 @@ service cloud.firestore {
     // Usuarios: solo el propio usuario puede leer/escribir su perfil
     match /usuarios/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      // El profesor puede leer perfiles de sus alumnos
+      // El profesor/admin puede leer perfiles de sus alumnos
       allow read: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'profesor';
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['profesor', 'admin'];
+      // Cualquier usuario autenticado puede crear su propio perfil (auto-registro)
+      allow create: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.rol == 'alumno';
+    }
+
+    // Notificaciones al docente por nuevos registros
+    match /notificaciones_docente/{notifId} {
+      allow create: if request.auth != null;  // alumno recién registrado puede crear
+      allow read, write: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in ['profesor', 'admin'];
     }
 
     // Ranking: cualquier usuario autenticado puede leer; solo escribir el propio grupo

@@ -15,6 +15,9 @@ const FIREBASE_CONFIG = {
 // false = Firebase real (requiere Email/Password activado en Firebase Console)
 const MODO_DEMO = localStorage.getItem('simulapp_modo_real') !== 'true';
 
+// Dominios de correo permitidos para el auto-registro de alumnos
+const DOMINIOS_PERMITIDOS = ['iescantillana.es', 'g.educaand.es'];
+
 /* ============================================================
    ESTADO GLOBAL
    ============================================================ */
@@ -169,8 +172,113 @@ function cerrarSesion() {
 }
 
 /* ============================================================
-   CARGA DE APP
+   AUTO-REGISTRO DE ALUMNOS
    ============================================================ */
+
+function toggleRegistro() {
+  const panel  = document.getElementById('panel-registro');
+  const wrap   = document.getElementById('btn-toggle-registro');
+  const abierto = panel.style.display !== 'none';
+
+  if (abierto) {
+    panel.style.display = 'none';
+    if (wrap) wrap.textContent = '¿Primera vez? Regístrate →';
+    return;
+  }
+
+  // Mostrar panel
+  panel.style.display = 'block';
+  if (wrap) wrap.textContent = '← Ocultar registro';
+
+  // Modo demo → aviso; modo real → formulario
+  document.getElementById('registro-modo-demo').style.display  = MODO_DEMO ? 'block' : 'none';
+  document.getElementById('registro-form-real').style.display  = MODO_DEMO ? 'none'  : 'block';
+}
+
+async function registrarAlumno() {
+  const nombre = (document.getElementById('reg-nombre').value || '').trim();
+  const email  = (document.getElementById('reg-email').value  || '').trim().toLowerCase();
+  const grupo  = (document.getElementById('reg-grupo').value  || '').trim();
+  const pass   = document.getElementById('reg-pass').value;
+  const pass2  = document.getElementById('reg-pass2').value;
+  const errEl  = document.getElementById('registro-error');
+  const btn    = document.getElementById('btn-registro');
+
+  const mostrarError = (msg) => {
+    errEl.textContent = msg;
+    errEl.classList.add('visible');
+    btn.disabled = false;
+    btn.innerHTML = '<span>Crear cuenta</span> →';
+  };
+
+  errEl.classList.remove('visible');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner-carga" style="width:16px;height:16px;border-width:2px"></div> Creando cuenta…';
+
+  // Validaciones básicas
+  if (!nombre)          return mostrarError('Introduce tu nombre completo.');
+  if (!email)           return mostrarError('Introduce tu correo corporativo.');
+  if (!grupo)           return mostrarError('Selecciona tu grupo de simulación.');
+  if (pass.length < 6)  return mostrarError('La contraseña debe tener al menos 6 caracteres.');
+  if (pass !== pass2)   return mostrarError('Las contraseñas no coinciden.');
+
+  // Validar dominio corporativo
+  const dominioOk = DOMINIOS_PERMITIDOS.some(d => email.endsWith('@' + d));
+  if (!dominioOk) {
+    return mostrarError(`Solo se permiten correos ${DOMINIOS_PERMITIDOS.map(d => '@' + d).join(' o ')}.`);
+  }
+
+  try {
+    // 1. Crear cuenta en Firebase Auth
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+
+    // 2. Actualizar displayName
+    await cred.user.updateProfile({ displayName: nombre });
+
+    // 3. Crear perfil en Firestore
+    const perfil = {
+      uid:           cred.user.uid,
+      email:         email,
+      displayName:   nombre,
+      rol:           'alumno',
+      grupo:         grupo,
+      fechaRegistro: new Date().toISOString(),
+      activo:        true,
+    };
+    await firebase.firestore().collection('usuarios').doc(cred.user.uid).set(perfil);
+
+    // 4. Notificación para el docente en Firestore
+    await firebase.firestore().collection('notificaciones_docente').add({
+      tipo:    'nuevo_alumno',
+      titulo:  `Nuevo alumno registrado: ${nombre}`,
+      cuerpo:  `${email} · Grupo ${grupo} · ${new Date().toLocaleDateString('es-ES')}`,
+      ts:      Date.now(),
+      leida:   false,
+    });
+
+    // 5. Cargar la app directamente
+    APP.usuario  = cred.user;
+    APP.perfil   = perfil;
+    APP.empresa  = perfil.empresa || null;
+    APP.rolActivo = 'alumno';
+    APP.grupo    = grupo;
+
+    document.getElementById('panel-registro').style.display = 'none';
+    cargarApp();
+
+  } catch(e) {
+    const mensajes = {
+      'auth/email-already-in-use':    'Este correo ya tiene una cuenta. Inicia sesión en lugar de registrarte.',
+      'auth/invalid-email':           'El formato del correo no es válido.',
+      'auth/weak-password':           'La contraseña es demasiado débil (mínimo 6 caracteres).',
+      'auth/operation-not-allowed':   'El registro está desactivado. Contacta con tu docente.',
+      'auth/network-request-failed':  'Sin conexión a internet. Comprueba tu red.',
+    };
+    mostrarError(mensajes[e.code] || ('Error: ' + e.message));
+  }
+}
+
 /* ============================================================
    CAPA 2 — SECCIÓN CONCEPTOS CLAVE
    Biblioteca navegable que reutiliza AYUDA_CONTENIDO
