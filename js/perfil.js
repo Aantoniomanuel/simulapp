@@ -573,7 +573,42 @@ function vistaPerfilDocente() {
     <div style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:var(--radio-lg);padding:1.25rem">
       <div style="font-size:.82rem;font-weight:700;color:var(--gris-700);margin-bottom:.4rem">🗂️ Copia de seguridad</div>
       <p style="font-size:.78rem;color:var(--gris-500);margin:0 0 1rem">Descarga un archivo JSON con todos los datos del curso: empresa, tareas, evaluaciones, correos, transacciones y calificaciones. Guárdalo como respaldo antes de comenzar un curso nuevo.</p>
-      <button class="btn-secundario" style="font-size:.82rem" onclick="generarBackupCurso()">⬇️ Descargar copia de seguridad</button>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+        <button class="btn-secundario" style="font-size:.82rem" onclick="generarBackupCurso()">⬇️ Descargar copia</button>
+        <label style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;border:1px solid var(--gris-300);border-radius:var(--radio-md);padding:7px 14px;font-size:.82rem;font-weight:600;color:var(--gris-700);background:var(--blanco)">
+          📂 Restaurar copia
+          <input type="file" accept=".json" style="display:none" onchange="restaurarBackup(this)">
+        </label>
+      </div>
+      <p style="font-size:.72rem;color:var(--gris-400);margin:.75rem 0 0">Al restaurar se reemplazarán todos los datos actuales. Se te pedirá confirmación.</p>
+    </div>
+
+    <!-- Activar Firebase real -->
+    <div style="background:${MODO_DEMO?'#fff7ed':'#f0fdf4'};border:1px solid ${MODO_DEMO?'#fed7aa':'#bbf7d0'};border-radius:var(--radio-lg);padding:1.25rem">
+      <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:700;color:${MODO_DEMO?'#9a3412':'#166534'};margin-bottom:.4rem">
+        ${MODO_DEMO?'🎭 Modo demo activo':'✅ Modo Firebase real activo'}
+      </div>
+      <p style="font-size:.78rem;color:var(--gris-600);margin:0 0 1rem">
+        ${MODO_DEMO
+          ? 'Los datos no se guardan en la nube. Activa el modo real para que alumnos y profesor tengan cuentas propias y los datos persistan en Firebase.'
+          : 'La app usa Firebase Auth y Firestore. Los datos se guardan en la nube y cada usuario accede con su propia cuenta.'}
+      </p>
+      ${MODO_DEMO ? `
+      <div style="background:white;border:1px solid #fed7aa;border-radius:var(--radio-md);padding:1rem;margin-bottom:1rem;font-size:.78rem;line-height:1.8">
+        <strong style="color:#9a3412">Pasos para activar el modo real:</strong><br>
+        <span id="step-auth">⏳</span> <strong>1.</strong> En <a href="https://console.firebase.google.com/project/simulapp-ies-cantillana/authentication/providers" target="_blank" style="color:#1d4ed8">Firebase Console → Authentication → Proveedores</a> activa <em>Correo / contraseña</em><br>
+        <span id="step-conn">⏳</span> <strong>2.</strong> Pulsa "Probar conexión" para verificar que Firebase responde<br>
+        <span>➡️</span> <strong>3.</strong> Pulsa "Activar modo real" — la app se recargará en modo Firebase<br>
+        <span>👤</span> <strong>4.</strong> Crea las cuentas de alumnos y profesor en <a href="https://console.firebase.google.com/project/simulapp-ies-cantillana/authentication/users" target="_blank" style="color:#1d4ed8">Firebase Console → Authentication → Usuarios</a>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+        <button class="btn-secundario" style="font-size:.82rem" onclick="probarConexionFirebase()">🔍 Probar conexión</button>
+        <button id="btn-activar-real" class="btn-accion" style="font-size:.82rem;background:#d97706" disabled onclick="activarModoReal()">⚡ Activar modo real</button>
+      </div>
+      <div id="resultado-test-firebase" style="margin-top:.6rem;font-size:.75rem;color:var(--gris-500)"></div>
+      ` : `
+      <button class="btn-secundario" style="font-size:.82rem;border-color:#ef4444;color:#dc2626" onclick="volverADemo()">↩️ Volver a modo demo</button>
+      `}
     </div>
 
     <!-- Reiniciar plataforma -->
@@ -844,6 +879,58 @@ function guardarCursoAcademico() {
   renderVista('perfil');
 }
 
+function restaurarBackup(inputEl) {
+  const file = inputEl && inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || !data.EMPRESA_STATE) {
+        mostrarToast('Archivo de backup no válido o corrupto', 'error');
+        return;
+      }
+      const fecha = data.exportadoEn
+        ? new Date(data.exportadoEn).toLocaleDateString('es-ES')
+        : 'fecha desconocida';
+      const curso = data.cursoAcademico || '?';
+      const ok = confirm(
+        `Vas a restaurar la copia de seguridad del curso ${curso} (${fecha}).\n` +
+        `Esto reemplazará TODOS los datos actuales.\n\n¿Continuar?`
+      );
+      if (!ok) { inputEl.value = ''; return; }
+
+      // Preservar template del código
+      const convenio         = JSON.parse(JSON.stringify(EMPRESA_STATE.rrhh.convenio || {}));
+      const tramitesTemplate = EMPRESA_STATE.tramites.map(t => ({ ...t }));
+
+      Object.assign(EMPRESA_STATE, data.EMPRESA_STATE);
+      EMPRESA_STATE.rrhh.convenio = convenio;
+
+      if (Array.isArray(data.EMPRESA_STATE.tramites)) {
+        EMPRESA_STATE.tramites = tramitesTemplate.map(t => {
+          const sv = data.EMPRESA_STATE.tramites.find(x => x.id === t.id);
+          if (!sv) return t;
+          return Object.assign({}, t, {
+            estado: sv.estado ?? t.estado, fecha: sv.fecha ?? '',
+            notas: sv.notas ?? '', documentoSubido: sv.documentoSubido ?? null,
+            anotacionProfesor: sv.anotacionProfesor ?? '',
+          });
+        });
+      }
+
+      if (typeof guardarEstado === 'function') guardarEstado();
+      mostrarToast('Copia de seguridad restaurada correctamente', 'exito');
+      setTimeout(() => irA('dashboard'), 600);
+    } catch(err) {
+      mostrarToast('Error al leer el archivo de backup', 'error');
+      console.error('[SimulApp] restaurarBackup:', err);
+    }
+    inputEl.value = ''; // permitir cargar el mismo archivo de nuevo
+  };
+  reader.readAsText(file);
+}
+
 function generarBackupCurso() {
   const curso = (EMPRESA_STATE.config && EMPRESA_STATE.config.cursoAcademico) || '2025-26';
   const backup = {
@@ -864,6 +951,61 @@ function generarBackupCurso() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   mostrarToast('Copia de seguridad descargada correctamente', 'exito');
+}
+
+async function probarConexionFirebase() {
+  const btnTest  = document.getElementById('btn-activar-real') || null;
+  const resEl    = document.getElementById('resultado-test-firebase');
+  const stepAuth = document.getElementById('step-auth');
+  const stepConn = document.getElementById('step-conn');
+
+  if (resEl) resEl.textContent = '⏳ Comprobando…';
+
+  try {
+    // Paso 1: Firebase SDK cargado
+    if (typeof firebase === 'undefined') throw new Error('Firebase SDK no cargado — revisa las etiquetas <script> en index.html');
+
+    // Inicializar si no está ya
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+
+    // Paso 2: Auth responde
+    await firebase.auth().fetchSignInMethodsForEmail('probe@simulapp.test').catch(err => {
+      // "auth/invalid-email" significa que Auth funciona; cualquier otro error es real
+      if (err.code !== 'auth/invalid-email') throw err;
+    });
+    if (stepAuth) stepAuth.textContent = '✅';
+
+    // Paso 3: Firestore responde
+    await firebase.firestore().collection('config').limit(1).get();
+    if (stepConn) stepConn.textContent = '✅';
+
+    if (resEl) resEl.innerHTML = '<span style="color:var(--verde-700);font-weight:600">✅ Firebase conectado correctamente. Puedes activar el modo real.</span>';
+    if (btnTest) btnTest.disabled = false;
+
+  } catch(e) {
+    if (stepConn) stepConn.textContent = '❌';
+    const msg = e.code === 'auth/operation-not-allowed'
+      ? 'Auth responde pero Email/Contraseña no está activado en Firebase Console (Paso 1)'
+      : e.message;
+    if (resEl) resEl.innerHTML = `<span style="color:#dc2626">❌ ${msg}</span>`;
+    mostrarToast('Error de conexión: ' + msg.substring(0,60), 'error');
+  }
+}
+
+function activarModoReal() {
+  const ok = confirm('¿Activar modo Firebase real?\n\nA partir de ahora el login usará Firebase Auth.\nAsegúrate de que has creado las cuentas en Firebase Console.');
+  if (!ok) return;
+  localStorage.setItem('simulapp_modo_real', 'true');
+  mostrarToast('Activando modo Firebase real…', 'exito');
+  setTimeout(() => location.reload(), 800);
+}
+
+function volverADemo() {
+  const ok = confirm('¿Volver al modo demo?\n\nEl login usará los usuarios de ejemplo y no se conectará a Firebase.');
+  if (!ok) return;
+  localStorage.removeItem('simulapp_modo_real');
+  mostrarToast('Volviendo a modo demo…', 'exito');
+  setTimeout(() => location.reload(), 800);
 }
 
 function confirmarReinicioPlataforma() {

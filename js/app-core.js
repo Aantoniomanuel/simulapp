@@ -1,4 +1,65 @@
-﻿function cargarApp() {
+﻿/* ============================================================
+   PERSISTENCIA — localStorage
+   Guarda EMPRESA_STATE automáticamente en cada render y cada
+   15 s, y lo restaura al volver a cargar la app.
+   ============================================================ */
+const LS_ESTADO_KEY = 'simulapp_state_v1';
+
+function guardarEstado() {
+  if (typeof EMPRESA_STATE === 'undefined') return;
+  try {
+    localStorage.setItem(LS_ESTADO_KEY, JSON.stringify({ ts: Date.now(), v: 1, state: EMPRESA_STATE }));
+  } catch(e) {
+    console.warn('[SimulApp] localStorage no disponible:', e.message);
+  }
+}
+
+function restaurarEstado() {
+  try {
+    const raw = localStorage.getItem(LS_ESTADO_KEY);
+    if (!raw) return false;
+    const guardado = JSON.parse(raw);
+    if (!guardado || !guardado.state || guardado.v !== 1) return false;
+    const s = guardado.state;
+
+    // Preservar datos-template del código (no provienen del usuario)
+    const convenio         = JSON.parse(JSON.stringify(EMPRESA_STATE.rrhh.convenio || {}));
+    const tramitesTemplate = EMPRESA_STATE.tramites.map(t => ({ ...t }));
+
+    // Restaurar todo el estado de usuario
+    Object.assign(EMPRESA_STATE, s);
+
+    // Reapply datos immutables del código
+    EMPRESA_STATE.rrhh.convenio = convenio;
+    if (Array.isArray(s.tramites)) {
+      EMPRESA_STATE.tramites = tramitesTemplate.map(t => {
+        const sv = s.tramites.find(x => x.id === t.id);
+        if (!sv) return t;
+        return Object.assign({}, t, {
+          estado:            sv.estado            ?? t.estado,
+          fecha:             sv.fecha             ?? '',
+          notas:             sv.notas             ?? '',
+          documentoSubido:   sv.documentoSubido   ?? null,
+          anotacionProfesor: sv.anotacionProfesor ?? '',
+        });
+      });
+    }
+    console.info('[SimulApp] Estado restaurado desde localStorage');
+    return true;
+  } catch(e) {
+    console.warn('[SimulApp] Error al restaurar estado:', e.message);
+    return false;
+  }
+}
+
+function borrarEstadoGuardado() {
+  try { localStorage.removeItem(LS_ESTADO_KEY); } catch(e) {}
+}
+
+/* ============================================================
+   CARGA DE LA APP
+   ============================================================ */
+function cargarApp() {
   document.getElementById('pantalla-login').classList.remove('activo');
   document.getElementById('app-principal').classList.add('activo');
 
@@ -23,6 +84,12 @@
   }
 
   rankingSuscribir();
+
+  // ── Restaurar estado guardado (si existe) ──
+  restaurarEstado();
+
+  // ── Guardado automático periódico (safety-net para cambios en inputs) ──
+  setInterval(guardarEstado, 15000);
 
   // ── Inicializar sistema de notificaciones ──
   setTimeout(() => {
@@ -145,6 +212,8 @@ function renderVista(modulo) {
   if (modulo === 'dashboard') {
     renderDashNotifWidget();
   }
+  // Persistir estado tras cada navegación/acción
+  guardarEstado();
 }
 
 /* ============================================================

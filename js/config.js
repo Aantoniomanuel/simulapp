@@ -10,9 +10,10 @@ const FIREBASE_CONFIG = {
   appId:             "1:736364716243:web:4b5186a6ed94f36713b426"
 };
 
-// Modo demo: true = datos de ejemplo sin Firebase | false = Firebase real
-// Cambia a false cuando hayas creado los usuarios en Firebase Auth
-const MODO_DEMO = true;
+// Modo demo: controlado desde el panel docente (Perfil → Configuración → Firebase)
+// true  = datos de ejemplo sin Firebase
+// false = Firebase real (requiere Email/Password activado en Firebase Console)
+const MODO_DEMO = localStorage.getItem('simulapp_modo_real') !== 'true';
 
 /* ============================================================
    ESTADO GLOBAL
