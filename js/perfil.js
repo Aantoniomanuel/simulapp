@@ -121,7 +121,7 @@ function vistaPerfilAlumno() {
           <div class="perfil-avatar-edit" title="Editar foto">✏️</div>
         </div>
         <div class="perfil-nombre-header">${u.displayName || 'Alumno/a'}</div>
-        <div class="perfil-rol-header">🎓 Alumno/a · SimulApp 2025-26</div>
+        <div class="perfil-rol-header">🎓 Alumno/a · SimulApp ${EMPRESA_STATE.config.cursoAcademico||'2025-26'}</div>
       </div>
       <div class="perfil-card-id-body">
         <div class="perfil-dato">
@@ -452,7 +452,7 @@ function vistaPerfilDocente() {
   /* Accesos REAL */
   const accesosRealHTML = () => `
   <div style="background:var(--blanco);border:1px solid var(--gris-200);border-radius:var(--radio-lg);padding:1.25rem;margin-bottom:1rem">
-    <div style="font-size:.82rem;font-weight:700;color:var(--gris-700);margin-bottom:.75rem">🔒 Accesos registrados en Supabase</div>
+    <div style="font-size:.82rem;font-weight:700;color:var(--gris-700);margin-bottom:.75rem">🔒 Accesos registrados en Firebase</div>
     ${alumnosReales.length === 0
       ? `<div style="text-align:center;padding:1.5rem;color:var(--gris-400);font-size:.82rem">Añade alumnos primero en la pestaña "👥 Mis alumnos"</div>`
       : alumnosReales.map(a => `
@@ -468,11 +468,11 @@ function vistaPerfilDocente() {
       </div>`).join('')}
   </div>
   <div style="padding:1rem;background:var(--gris-50);border:1px solid var(--gris-200);border-radius:var(--radio-lg);font-size:.78rem;color:var(--gris-600);line-height:1.7">
-    <strong>Para activar accesos reales:</strong><br>
-    1. Crea las cuentas en Supabase Authentication con el correo de cada alumno<br>
-    2. En la tabla <code>perfiles</code> asigna <code>rol = 'alumno'</code><br>
-    3. En <code>alumnos_grupos</code> vincula cada alumno a su grupo<br>
-    4. Cambia <code>MODO_DEMO = false</code> en el código fuente
+    <strong>Para activar accesos reales con Firebase:</strong><br>
+    1. En <a href="https://console.firebase.google.com/project/simulapp-ies-cantillana/authentication/providers" target="_blank" style="color:#1d4ed8">Firebase Console → Authentication → Proveedores</a> activa <em>Correo / contraseña</em><br>
+    2. Crea las cuentas en <a href="https://console.firebase.google.com/project/simulapp-ies-cantillana/authentication/users" target="_blank" style="color:#1d4ed8">Firebase Console → Authentication → Usuarios</a><br>
+    3. En Firestore crea un documento en <code>usuarios/{uid}</code> con <code>rol, email, grupo</code><br>
+    4. En el perfil docente → Configuración → pulsa "Activar modo real"
   </div>`;
 
   /* ══════════════════════════════════════════════════════════════
@@ -703,7 +703,7 @@ function vistaPerfilDocente() {
           <div class="perfil-avatar-edit">✏️</div>
         </div>
         <div class="perfil-nombre-header">${u.displayName || 'Docente'}</div>
-        <div class="perfil-rol-header" style="color:#c4b5fd">👩‍🏫 Docente · SimulApp 2025-26</div>
+        <div class="perfil-rol-header" style="color:#c4b5fd">👩‍🏫 Docente · SimulApp ${EMPRESA_STATE.config.cursoAcademico||'2025-26'}</div>
       </div>
       <div class="perfil-card-id-body">
         <div class="perfil-dato">
