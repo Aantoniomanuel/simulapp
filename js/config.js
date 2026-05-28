@@ -10,10 +10,9 @@ const FIREBASE_CONFIG = {
   appId:             "1:736364716243:web:4b5186a6ed94f36713b426"
 };
 
-// Modo demo: controlado desde el panel docente (Perfil → Configuración → Firebase)
-// true  = datos de ejemplo sin Firebase
-// false = Firebase real (requiere Email/Password activado en Firebase Console)
-const MODO_DEMO = localStorage.getItem('simulapp_modo_real') !== 'true';
+// Modo demo: false = Firebase real (por defecto desde que Auth está activo)
+// Para volver a demo: Perfil → Configuración → "Volver a modo demo"
+const MODO_DEMO = localStorage.getItem('simulapp_modo_real') === 'true';
 
 // Dominios de correo permitidos para el auto-registro de alumnos
 const DOMINIOS_PERMITIDOS = ['iescantillana.es', 'g.educaand.es'];
